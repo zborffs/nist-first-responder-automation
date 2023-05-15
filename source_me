@@ -1,0 +1,2 @@
+export ROS_MASTER_IP=192.168.78.197
+export ROS_IP=${ROS_MASTER_IP}
