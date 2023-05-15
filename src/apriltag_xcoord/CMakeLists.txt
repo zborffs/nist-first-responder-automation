@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 
+# name of the project (change later)
 project(apriltag_xcoord)
 
-
 ## Compile as C++11, supported in ROS Kinetic and newer
- add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -16,9 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
 )
 
+# find the following non-ROS related dependencies
 find_package(cmake_modules REQUIRED)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
 find_package(Boost REQUIRED)
 find_package(Eigen 3.1.2 REQUIRED)
 
@@ -26,7 +26,7 @@ find_package(Eigen 3.1.2 REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 
 catkin_package(
-    CATKIN_DEPENDS roscpp
+  CATKIN_DEPENDS roscpp
 )
 
 
@@ -49,7 +49,7 @@ if (GeographicLib_LIBRARIES)
     get_filename_component (GeographicLib_LIBRARY_DIRS
       "${GeographicLib_LIBRARIES}" PATH)
   endif ()
-  endif ()
+endif ()
 
 catkin_package(
   DEPENDS Boost Eigen roscpp
@@ -65,15 +65,20 @@ include_directories(
 ###########################################################
 # EVERYTIME YOU MAKE A NEW CPP FILE, EDIT THE LINES BELOW #
 ###########################################################
+
+set(MY_LIB_SRCS
+    src/utils.cpp # don't contain main functions
+)
+
+# Create library, link external libraries against it
+add_library(my-lib ${MY_LIB_SRCS})
+target_include_directories(my-lib PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
+target_link_libraries(my-lib ${catkin_LIBRARIES})
+
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/apriltag_xcoord.cpp)
 add_executable(final_project_node src/project.cpp)
-add_executable(final_project2_node src/project2.cpp)
 add_executable(generate_waypoints_node src/generate_waypoints.cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
-target_link_libraries(final_project_node ${catkin_LIBRARIES})
-target_link_libraries(final_project2_node ${catkin_LIBRARIES})
+target_link_libraries(final_project_node ${catkin_LIBRARIES} my-lib)
 target_link_libraries(generate_waypoints_node ${catkin_LIBRARIES})
-

@@ -19,7 +19,6 @@
 
 geometry_msgs::PoseStamped geo_msg_pose_stamped_apriltag;
 geometry_msgs::PoseStamped geo_msg_pose_stamped_drone;
-Eigen::Vector4d u(4);
 unsigned previous_at_in_seq{0}; // rename later...
 
 
