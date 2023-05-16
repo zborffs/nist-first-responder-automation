@@ -91,42 +91,6 @@ Eigen::Matrix4d geo_msg_pose_stamped_to_homogeneous_tf(geometry_msgs::PoseStampe
 }
 
 /**
- * returns the homogeneous transformation representing the offset between the offset and the apriltag
-*/
-Eigen::Matrix4d get_offset_to_apriltag(const Bucket bucket) {
-    Eigen::Matrix4d H_offset_apriltag;
-
-    switch (bucket) {
-        case Bucket::Bucket1:
-            H_offset_apriltag << -0.999663, 0.031221, 0.000515, 0.550040, 0.031171, 0.998714, -0.039981, -0.516124,  -0.001763, -0.039951, -0.999351, -0.407456, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket1a:
-            H_offset_apriltag << -0.626168, -0.779510, 0.024069, 0.504049,  -0.779751, 0.625586, -0.025125, 0.206124,  0.004528, -0.034500, -0.999546, -0.422530,  0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket2:
-            H_offset_apriltag << -0.999803, -0.003898, -0.026100, 0.490166, -0.003227, 0.999664, -0.025707, 0.407937, 0.026191, -0.025618, -0.999480, -0.399073, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket2a:
-            H_offset_apriltag << -0.493306, 0.868041, -0.058797, 0.480437,  0.869885, 0.492477, -0.027707, -0.300816, 0.004905, -0.064814, -0.998037, -0.394514, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket3:
-            H_offset_apriltag << 0.998840, 0.014387, -0.049128, 0.529951, 0.014442, -0.999895, 0.000803, -0.433028, -0.049111, -0.001512, -0.998943, -0.421869, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket3a:
-            H_offset_apriltag << 0.705964, 0.706634, -0.050850, 0.414134, 0.702881, -0.707502, -0.073479, 0.207773, -0.087899, 0.016132, -0.996150, -0.413958, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket4:
-            H_offset_apriltag << 0.993789, 0.002955, -0.112592, 0.430355, 0.000168, -0.999694, -0.024749, 0.422722, -0.112631, 0.024576, -0.993485, -0.411195, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-        case Bucket::Bucket4a:
-            H_offset_apriltag << 0.585685, -0.807392, -0.073439, 0.485660, -0.806571, -0.589312, 0.046417, -0.207583, -0.080755, 0.032048, -0.996370, -0.404097, 0.000000, 0.000000, 0.000000, 1.000000;
-            break;
-    }
-    
-    return H_offset_apriltag;
-}
-
-/**
  * returns true if the drone's position and yaw are equal (within some tolerance) to the desired position and yaw
 */
 bool drone_is_approximately_at_offset(const Eigen::Matrix4d& H_inertial_body, const Eigen::Matrix4d& H_inertial_offset, const double yaw_tolerance, const double position_component_tolerance) {
@@ -159,26 +123,60 @@ bool drone_is_approximately_at_offset(const Eigen::Matrix4d& H_inertial_body, co
     return x_within_tolerance && y_within_tolerance && z_within_tolerance && yaw_within_tolerance;
 }
 
-std::string bucket_to_string(const Bucket bucket) {
-    std::string ret = "";
+/**
+ * determines the yawrate to publish to /mavros/setpoint_raw/local to guarantee that we face the right direction
+*/
+double determine_yaw_rate(const Eigen::Matrix4d& H_inertial_body, const Eigen::Matrix4d H_inertial_offset, const double yaw_tolerance, const double max_yaw_rate) {
+    // determine the yaw (in range (0, 2pi)) of the drone w.r.t. the inertial frame
+    double yaw_inertial_body = homogeneous_tf_to_yaw(H_inertial_body, true);
+    // ROS_INFO_STREAM("yaw inertial body " << std::to_string(yaw_inertial_body));
 
-    switch(bucket) {
-        case Bucket::Bucket1:
-            return ret + "Bucket 1";
-        case Bucket::Bucket1a:
-            return ret + "Bucket 1a";
-        case Bucket::Bucket2:
-            return ret + "Bucket 2";
-        case Bucket::Bucket2a:
-            return ret + "Bucket 2a";
-        case Bucket::Bucket3:
-            return ret + "Bucket 3";
-        case Bucket::Bucket3a:
-            return ret + "Bucket 3a";
-        case Bucket::Bucket4:
-            return ret + "Bucket 4";
-        case Bucket::Bucket4a:
-            return ret + "Bucket 4a";
+    // determine the yaw (in range (0, 2pi)) of the offset w.r.t. the inertial frame
+    double yaw_inertial_offset = homogeneous_tf_to_yaw(H_inertial_offset, false);
+    // ROS_INFO_STREAM("yaw inertial offset " << std::to_string(yaw_inertial_offset));
+
+    // take difference from target to source
+    double smallest_angle_difference = yaw_inertial_offset - yaw_inertial_body;
+    // ROS_INFO_STREAM("smallest angle difference " << std::to_string(smallest_angle_difference));
+
+    if (smallest_angle_difference > 3.14) {
+        smallest_angle_difference -= 2 * 3.14;
+    } else if (smallest_angle_difference < -3.14) {
+        smallest_angle_difference += 2 * 3.14;
     }
 
+    // determine the yawrate to publish given the smallest angle between actual yaw and desired yaw
+    if (std::abs(smallest_angle_difference) < yaw_tolerance / 2) {
+        // if the absolute difference between the smallest angle between the drone and the desired is less than 1/2 the tolerance, then just stop yawing
+        return 0.0;
+    } else if (smallest_angle_difference < 0) {
+        // if the smallest angle difference is negative, then command a negative yaw rate
+        return -max_yaw_rate;
+    }
+
+    // if we reached this point, then the smallest angle difference must be > 1/2 the tolerance AND
+    // the smallest angle must be positive, so command a positive yawrate!
+    return max_yaw_rate;
+}
+
+/**
+ * this function returns the yaw of the given homogenous transform in the range of (0, 2pi)
+*/
+double homogeneous_tf_to_yaw(const Eigen::Matrix4d& homogeneous_tf, bool verbose) {
+
+    // determine the 3-2-1 Euler angles (these go from (0, pi) and (0, pi))
+    Eigen::Vector3d desired_euler_angles_3_2_1 = homogeneous_tf.topLeftCorner<3, 3>().eulerAngles(2, 1, 0); // 3-2-1 euler angles, where "2" is a rot about z-axis, 0 is x-axis, and 1 is y-axis
+    // if (verbose) {
+    //     ROS_INFO_STREAM("desired_euler_angles_3_2_1 " << std::to_string(desired_euler_angles_3_2_1[0]));
+    // }
+
+    // determine the 2-3-1 Euler angles (these go from (0, pi) and (0, pi))
+    Eigen::Vector3d desired_euler_angles_2_3_1 = homogeneous_tf.topLeftCorner<3, 3>().eulerAngles(1,2,0); // 3-2-1 euler angles, where "2" is a rot about z-axis, 0 is x-axis, and 1 is y-axis
+
+    // if 2-3-1 yaw is negative, then we can add pi to the 3-2-1 yaw to get the yaw from (0, 2pi)
+    if (desired_euler_angles_2_3_1[1] < 0) {
+        desired_euler_angles_3_2_1[0] += 3.1415;
+    }
+
+    return desired_euler_angles_3_2_1[0]; // i believe technically that we need to subtract pi from this, but doesn't really matter?
 }
