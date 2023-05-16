@@ -34,7 +34,6 @@ const double POSITION_COMPONENT_TOLERANCE_M = 0.25; // 20 centimeters, but repre
 
 // the maximum yaw rate we ever want to command in units of rad/s
 const double MAX_YAW_RATE_RAD = 3.14 / 180.0 * 25.0; // roughly 25 degrees per second, but represented in units of radians per second 
-
 // </global variables>
 
 
@@ -84,7 +83,7 @@ void callback_pose_inertial_body(const geometry_msgs::PoseStamped::ConstPtr& geo
 
 int main(int argc, char **argv) {
     // boilerplate code for node
-    ros::init(argc, argv, "project_node"); // name the ROS node
+    ros::init(argc, argv, "offboard_ctrls"); // name the ROS node
     ros::NodeHandle nh;
     
     // declare the publishers and subscribers (pretty much more boilerplate)
@@ -95,7 +94,7 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_pose_inertial_body = nh.subscribe <geometry_msgs::PoseStamped> ("/mavros/local_position/pose", 10, callback_pose_inertial_body); // subscribe to the pose of the drone in the inertial frame
     
     // Read the bucket configuration of the .json file we are passing in, and set the current bucket to the first bucket in the list of buckets in the .json file
-    BucketConfiguration bucket_configuration("/root/yoctohome/apriltag_xcoord/config/GROUND.json");
+    BucketConfiguration bucket_configuration("/root/yoctohome/nist_first_responder_automation/config/GROUND.json");
 
     // Declare relevant poses / frames as homogeneous transformations (which are represented in code as Eigen::Matrix4d)
     Eigen::Matrix4d H_body_apriltag; // This is the pose of the apriltag in the body frame
@@ -221,7 +220,6 @@ int main(int argc, char **argv) {
 
         // increment a counter for every iteration of this while-loop in which the drone is approximately at the desired setpoint.
         if (drone_is_approximately_at_offset(H_inertial_body, H_inertial_offset, YAW_TOLERANCE_RAD, POSITION_COMPONENT_TOLERANCE_M)) {
-            // tolerance is 20 degrees and 20 centimeters
             number_of_iterations_at_bucket_i++;
         }
 
@@ -232,10 +230,6 @@ int main(int argc, char **argv) {
             number_of_iterations_at_bucket_i = 0; // reset the counter
             bucket_configuration.increment_bucket_index(); // go to the next bucket.
         }
-        
-        // ROS_INFO_STREAM("ACTUAL YAW (3-2-1) " << actual_euler_angles_1[0]);
-        // ROS_INFO_STREAM("ACTUAL YAW (1-2-3) " << actual_euler_angles_2[2]);
-        // ROS_INFO_STREAM("DESIRED YAW " << desired_euler_angles[0]);
 
         ros::spinOnce();
         rate.sleep();

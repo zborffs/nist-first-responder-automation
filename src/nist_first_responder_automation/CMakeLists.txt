@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 # name of the project (change later)
-project(apriltag_xcoord)
+project(nist_first_responder_automation)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -65,20 +65,19 @@ include_directories(
 ###########################################################
 # EVERYTIME YOU MAKE A NEW CPP FILE, EDIT THE LINES BELOW #
 ###########################################################
-
-set(MY_LIB_SRCS
-    src/utils.cpp # don't contain main functions
+set(NFRA_LIB_SRCS
+    src/utils.cpp
 )
 
 # Create library, link external libraries against it
-add_library(my-lib ${MY_LIB_SRCS})
-target_include_directories(my-lib PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
-target_link_libraries(my-lib ${catkin_LIBRARIES})
+add_library(NFRA-lib ${NFRA_LIB_SRCS})
+target_include_directories(NFRA-lib PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
+target_link_libraries(NFRA-lib ${catkin_LIBRARIES})
 
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(final_project_node src/project.cpp)
+add_executable(NFRA_node src/project.cpp)
 add_executable(generate_waypoints_node src/generate_waypoints.cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(final_project_node ${catkin_LIBRARIES} my-lib)
+target_link_libraries(NFRA_node ${catkin_LIBRARIES} NFRA-lib)
 target_link_libraries(generate_waypoints_node ${catkin_LIBRARIES})

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>apriltag_xcoord</name>
+  <name>nist_first_responder_automation</name>
   <version>0.0.0</version>
   <description>NIST First Responder Challenge Automation</description>
 

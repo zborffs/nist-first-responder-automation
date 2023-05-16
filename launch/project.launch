@@ -1,3 +1,0 @@
-<launch>
-        <node pkg="apriltag_xcoord" type="final_project_node" name="offbrd_ctrls" output="screen"></node>
-</launch>
