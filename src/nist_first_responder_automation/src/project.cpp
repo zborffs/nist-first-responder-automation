@@ -22,15 +22,15 @@ const double PUBLISHING_RATE_HZ = 20.0; // in units of Hz
 
 // the "1" indicates "1 second". This global variable defines the maximum number of iterations of the while-loop
 // until we will no longer accept that we are currently seeing the apriltag.
-const int MAX_NUMBER_OF_ITERATIONS_SINCE_LAST_SAW_APRILTAG = (int)PUBLISHING_RATE_HZ * 1;
+const int MAX_NUMBER_OF_ITERATIONS_SINCE_LAST_SAW_APRILTAG = (int)(PUBLISHING_RATE_HZ * 0.25);
 
 // the "8" indicates "8 seconds". This global variable defines the maximum number of iterations of the while-loop
 // until we should proceed to moving to the next bucket.
 const int MAX_NUMBER_OF_ITERATIONS_LOOKING_AT_BUCKET_I = (int)PUBLISHING_RATE_HZ * 5;
 
 // tolerances for knowing whether we have reached the desired configuration
-const double YAW_TOLERANCE_RAD = 3.14 / 180.0 * 20; // roughly 20 degrees, but represented in units of radians
-const double POSITION_COMPONENT_TOLERANCE_M = 0.25; // 20 centimeters, but represented in units of meters
+const double YAW_TOLERANCE_RAD = 3.14 / 180.0 * 15; // roughly 15 degrees, but represented in units of radians
+const double POSITION_COMPONENT_TOLERANCE_M = 0.10; // 10 centimeters, but represented in units of meters
 
 // the maximum yaw rate we ever want to command in units of rad/s
 const double MAX_YAW_RATE_RAD = 3.14 / 180.0 * 25.0; // roughly 25 degrees per second, but represented in units of radians per second 
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_pose_inertial_body = nh.subscribe <geometry_msgs::PoseStamped> ("/mavros/local_position/pose", 10, callback_pose_inertial_body); // subscribe to the pose of the drone in the inertial frame
     
     // Read the bucket configuration of the .json file we are passing in, and set the current bucket to the first bucket in the list of buckets in the .json file
-    BucketConfiguration bucket_configuration("/root/yoctohome/nist_first_responder_automation/config/GROUND.json");
+    BucketConfiguration bucket_configuration("/root/yoctohome/nist_first_responder_automation/config/GROUND2.json");
 
     // Declare relevant poses / frames as homogeneous transformations (which are represented in code as Eigen::Matrix4d)
     Eigen::Matrix4d H_body_apriltag; // This is the pose of the apriltag in the body frame
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     // define the static fields of the "PositionTarget" struct
     mavros_msgs::PositionTarget desired_pose_inertial_body;
     desired_pose_inertial_body.coordinate_frame = 1; // this must be set to '1' for ineritial control
-	desired_pose_inertial_body.type_mask = desired_pose_inertial_body.IGNORE_VX | desired_pose_inertial_body.IGNORE_VY | desired_pose_inertial_body.IGNORE_VZ | desired_pose_inertial_body.IGNORE_AFZ | desired_pose_inertial_body.IGNORE_AFY | desired_pose_inertial_body.IGNORE_AFX | desired_pose_inertial_body.IGNORE_YAW;
+    desired_pose_inertial_body.type_mask = desired_pose_inertial_body.IGNORE_VX | desired_pose_inertial_body.IGNORE_VY | desired_pose_inertial_body.IGNORE_VZ | desired_pose_inertial_body.IGNORE_AFZ | desired_pose_inertial_body.IGNORE_AFY | desired_pose_inertial_body.IGNORE_AFX | desired_pose_inertial_body.IGNORE_YAW;
 
     // define some loop parameters that will be updated in the loop
     int number_of_iterations_since_last_saw_apriltag = 0; // number of iterations of the following while-loop in which we have seen the apriltag
@@ -177,7 +177,6 @@ int main(int argc, char **argv) {
         } else {
             // if we reached this point, that means, we are not seeing the apriltag right now AND we have seen the 
             // apriltag in the past.
-
             
 
             // Print the pose of the apriltag in the body-frame
